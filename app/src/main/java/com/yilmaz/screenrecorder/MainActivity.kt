@@ -9,17 +9,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import com.yilmaz.screenrecorder.ui.theme.ScreenRecorderTheme
 
 class MainActivity : ComponentActivity() {
@@ -28,12 +38,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val p = PermissionHelper(this, this)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            !p.checkNotificationPermission()
+            !PermissionHelper(this, this).checkNotificationPermission()
         )
-            p.requestNotificationPermissions()
+            PermissionHelper(this, this).requestNotificationPermissions()
 
         setContent {
             ScreenRecorderTheme {
@@ -42,36 +53,64 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val isRecorderStarted = remember {
-                        mutableStateOf(RecorderService.IS_SERVICE_RUNNING)
-                    }
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        FilledTonalButton(
-                            onClick = {
-                                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-                                    if (p.checkRecordAudioPermission() && p.checkWriteStoragePermission())
-                                        isRecorderStarted.value =
-                                            startRecorder(isRecorderStarted.value)
-                                    else
-                                        p.requestRecordAudioWriteStoragePermissions()
-
-                                } else {
-                                    if (p.checkRecordAudioPermission())
-                                        isRecorderStarted.value =
-                                            startRecorder(isRecorderStarted.value)
-                                    else
-                                        p.requestRecordAudioPermissions()
-                                }
-                            },
-                            modifier = Modifier.wrapContentSize()
-                        ) {
-                            Text(text = if (isRecorderStarted.value) "Stop" else "Start")
-                        }
-                    }
+                    Recorder()
                 }
+            }
+        }
+    }
+
+    @Composable
+    fun Recorder() {
+        val p = PermissionHelper(this, this)
+        val isRecorderStarted = remember {
+            mutableStateOf(RecorderService.IS_SERVICE_RUNNING)
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        0.0f to Color.Magenta,
+                        1.0f to Color.Cyan,
+                        radius = 1500.0f,
+                        tileMode = TileMode.Repeated
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            IconButton(
+                onClick = {
+                    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+                        if (p.checkRecordAudioPermission() && p.checkWriteStoragePermission())
+                            isRecorderStarted.value =
+                                startRecorder(isRecorderStarted.value)
+                        else
+                            p.requestRecordAudioWriteStoragePermissions()
+
+                    } else {
+                        if (p.checkRecordAudioPermission())
+                            isRecorderStarted.value =
+                                startRecorder(isRecorderStarted.value)
+                        else
+                            p.requestRecordAudioPermissions()
+                    }
+                },
+                modifier = Modifier
+                    .wrapContentSize()
+                    .width(64.dp)
+                    .height(64.dp)
+            ) {
+                Icon(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    painter = painterResource(
+                        id = if (isRecorderStarted.value)
+                            R.drawable.baseline_stop_circle_24
+                        else
+                            R.drawable.baseline_play_circle_24
+                    ),
+                    contentDescription = "play - stop button"
+                )
             }
         }
     }

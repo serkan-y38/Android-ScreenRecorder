@@ -26,6 +26,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import java.io.File
 import java.io.IOException
+import java.util.Timer
+import java.util.TimerTask
 
 class RecorderService : Service() {
 
@@ -35,12 +37,14 @@ class RecorderService : Service() {
     private lateinit var mediaRecorder: MediaRecorder
     private lateinit var mVirtualDisplay: VirtualDisplay
     private lateinit var currentVideoUri: Uri
+    private lateinit var notificationTimer: Timer
 
     override fun onCreate() {
         super.onCreate()
         mediaProjectionManager = applicationContext.getSystemService(
             Context.MEDIA_PROJECTION_SERVICE
         ) as MediaProjectionManager
+        notificationTimer = Timer()
     }
 
     override fun onBind(intent: Intent): IBinder? {
@@ -60,14 +64,29 @@ class RecorderService : Service() {
     }
 
     private fun start(intent: Intent) {
-        IS_SERVICE_RUNNING = true
-        startForeground(1, buildNotification())
-        startRecorder(intent)
+        if (!IS_SERVICE_RUNNING) {
+            IS_SERVICE_RUNNING = true
+            startForeground(1, buildNotification(0))
+            startTimer()
+            startRecorder(intent)
+        }
     }
 
     private fun stop() {
-        IS_SERVICE_RUNNING = false
-        stopRecorder()
+        if (IS_SERVICE_RUNNING) {
+            IS_SERVICE_RUNNING = false
+            notificationTimer.cancel()
+            stopRecorder()
+        }
+    }
+
+    private fun startTimer() {
+        var second: Long = 0
+        notificationTimer.scheduleAtFixedRate(object : TimerTask() {
+            override fun run() {
+                updateNotification(second++)
+            }
+        }, 0, 1000)
     }
 
     @SuppressLint("Recycle")
@@ -148,6 +167,31 @@ class RecorderService : Service() {
         stopSelf()
     }
 
+    private fun updateNotification(second: Long) {
+        notificationManager.notify(
+            1,
+            buildNotification(second)
+        )
+    }
+
+    private fun buildNotification(second: Long): Notification {
+        val intent = Intent(this, MainActivity::class.java)
+        val pIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(R.string.app_name))
+            .setOngoing(true)
+            .setContentText("Recording now ${getFormattedTimerText(second)}")
+            .setSmallIcon(R.drawable.baseline_circle_24)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(pIntent)
+            .build()
+    }
+
     private fun createNotificationChannel() {
         val notificationChannel = NotificationChannel(
             CHANNEL_ID,
@@ -168,22 +212,11 @@ class RecorderService : Service() {
         )!!
     }
 
-    private fun buildNotification(): Notification {
-        val intent = Intent(this, MainActivity::class.java)
-        val pIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
-        )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.app_name))
-            .setOngoing(true)
-            .setContentText("Recording")
-            .setSmallIcon(R.drawable.baseline_circle_24)
-            .setOnlyAlertOnce(true)
-            .setContentIntent(pIntent)
-            .build()
+    private fun getFormattedTimerText(second: Long): String {
+        val h = second.div(60).div(60)
+        val m = (second - (h * 3600)).div(60)
+        val s = second.rem(60)
+        return "${"%02d".format(h)}:${"%02d".format(m)}:${"%02d".format(s)}"
     }
 
     companion object {
@@ -194,4 +227,5 @@ class RecorderService : Service() {
         const val NOTIFICATION_NAME = "RECORDER_SERVICE_NOTIFICATION_NAME"
         const val EXTRA_RESULT_DATA = "EXTRA_RESULT_DATA"
     }
+
 }
