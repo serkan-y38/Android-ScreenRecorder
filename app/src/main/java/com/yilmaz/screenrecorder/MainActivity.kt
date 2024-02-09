@@ -70,8 +70,8 @@ class MainActivity : ComponentActivity() {
                 .fillMaxSize()
                 .background(
                     Brush.radialGradient(
-                        0.0f to Color.Magenta,
-                        1.0f to Color.Cyan,
+                        0.0f to Color(0xFF4FC3F7),
+                        1.0f to Color(0xFFE1BEE7),
                         radius = 1500.0f,
                         tileMode = TileMode.Repeated
                     )
@@ -120,7 +120,7 @@ class MainActivity : ComponentActivity() {
         return !isStarted
     }
 
-    private val resultLauncher =
+    private val projectionResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 val data: Intent? = result.data
@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
         projectionManager = applicationContext.getSystemService(
             Context.MEDIA_PROJECTION_SERVICE
         ) as MediaProjectionManager
-        projectionManager.createScreenCaptureIntent().let { resultLauncher.launch(it) }
+        projectionResultLauncher.launch(projectionManager.createScreenCaptureIntent())
     }
 
     private fun startRecorderService(data: Intent) {

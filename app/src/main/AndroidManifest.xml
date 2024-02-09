@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission
+        android:name="android.permission.CAPTURE_VIDEO_OUTPUT"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android:project_media" />
 
     <application
         android:allowBackup="true"
@@ -23,7 +28,8 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.ScreenRecorder">
+            android:theme="@style/Theme.ScreenRecorder"
+            tools:ignore="RedundantLabel">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

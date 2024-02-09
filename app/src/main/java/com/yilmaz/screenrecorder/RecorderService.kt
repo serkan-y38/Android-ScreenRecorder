@@ -20,6 +20,7 @@ import android.os.Environment
 import android.os.IBinder
 import android.provider.MediaStore
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -92,37 +93,14 @@ class RecorderService : Service() {
     @SuppressLint("Recycle")
     @Suppress("DEPRECATION")
     private fun startRecorder(intent: Intent) {
-        val values = ContentValues().apply {
-            put(
-                MediaStore.Video.Media.RELATIVE_PATH,
-                Environment.DIRECTORY_MOVIES + File.separator + getString(R.string.app_name)
-            )
-            put(MediaStore.Video.Media.DISPLAY_NAME, "temp_video_${System.currentTimeMillis()}.mp4")
-            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-        }
-        val resolver = applicationContext.contentResolver
-        currentVideoUri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)!!
-
         val metrics = DisplayMetrics()
         val wm = applicationContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         wm.defaultDisplay.getRealMetrics(metrics)
 
-        mediaRecorder = MediaRecorder().apply {
-            setAudioSource(MediaRecorder.AudioSource.MIC)
-            setVideoSource(MediaRecorder.VideoSource.SURFACE)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setVideoEncodingBitRate(8 * 1000 * 1000)
-            setVideoFrameRate(15)
-            setVideoSize(metrics.widthPixels, metrics.heightPixels)
-            setOutputFile(
-                resolver.openFileDescriptor(
-                    currentVideoUri,
-                    "w"
-                )?.fileDescriptor
-            )
-        }
+        buildMediaRecorder(
+            metrics.widthPixels,
+            metrics.heightPixels,
+        )
 
         try {
             mediaRecorder.prepare()
@@ -138,6 +116,14 @@ class RecorderService : Service() {
             )!!
         ) as MediaProjection
 
+        val callback: MediaProjection.Callback = object : MediaProjection.Callback() {
+            override fun onStop() {
+                Log.d("MediaProjection", "onStop")
+            }
+        }
+
+        mediaProjection.registerCallback(callback, null)
+
         mVirtualDisplay = mediaProjection.createVirtualDisplay(
             "MainActivity",
             metrics.widthPixels,
@@ -149,6 +135,38 @@ class RecorderService : Service() {
             null
         )!!
         mediaRecorder.start()
+    }
+
+    @SuppressLint("Recycle")
+    private fun buildMediaRecorder(width: Int, height: Int) {
+        val values = ContentValues().apply {
+            put(
+                MediaStore.Video.Media.RELATIVE_PATH,
+                Environment.DIRECTORY_MOVIES + File.separator + getString(R.string.app_name)
+            )
+            put(MediaStore.Video.Media.DISPLAY_NAME, "temp_video_${System.currentTimeMillis()}.mp4")
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+        }
+        val resolver = applicationContext.contentResolver
+        currentVideoUri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)!!
+
+        @Suppress("DEPRECATION")
+        mediaRecorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setVideoSource(MediaRecorder.VideoSource.SURFACE)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setVideoEncodingBitRate(8 * 1000 * 1000)
+            setVideoFrameRate(15)
+            setVideoSize(width, height)
+            setOutputFile(
+                resolver.openFileDescriptor(
+                    currentVideoUri,
+                    "w"
+                )?.fileDescriptor
+            )
+        }
     }
 
     private fun stopRecorder() {
